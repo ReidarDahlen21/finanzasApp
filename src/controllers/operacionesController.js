@@ -6,7 +6,7 @@ async function mostrarFormulario(req, res) {
   const exito = req.query.exito === '1';
   const error = null;
 
-  res.render('operacionesForm', { nombres, exito, error });
+  res.render('operacionesForm', { nombres, exito, error  });
 }
 
 

@@ -1,6 +1,7 @@
 // src/config/db.js
-const { Pool } = require('pg');
 require('dotenv').config();
+
+const { Pool } = require('pg');
 
 const pool = new Pool({
   user: process.env.DB_USER,
@@ -11,7 +12,12 @@ const pool = new Pool({
 });
 
 pool.connect()
-  .then(() => console.log('✅ Conectado a PostgreSQL'))
+  .then(() => {
+    console.log('✅ Conectado a PostgreSQL');
+    //console.log('🔐 PASSWORD:', typeof process.env.DB_PASSWORD, process.env.DB_PASSWORD);
+  })
   .catch(err => console.error('❌ Error al conectar a PostgreSQL:', err));
+
+
 
 module.exports = pool;

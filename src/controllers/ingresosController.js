@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const modelo = require('../models/ingresosModel');
 
 async function mostrarFormulario(req, res) {
   const result = await pool.query('SELECT nombre FROM instrumentos ORDER BY nombre');
@@ -11,7 +12,7 @@ async function mostrarFormulario(req, res) {
     error = 'El instrumento ingresado no existe.';
   }
 
-  res.render('ingresosForm', { nombres, error, exito });
+  res.render('ingresosForm', { nombres, error, exito  });
 }
 
 
@@ -44,4 +45,22 @@ async function crearIngreso(req, res) {
 }
 
 
-module.exports = { mostrarFormulario, crearIngreso };
+async function mostrarResumen(req, res) {
+  try {
+    const rango = req.query.rango || 'ALL';
+    const ingresos = await modelo.obtenerResumenIngresos(); // por ahora, trae todo
+
+    // Filtrado por fecha (lo haremos en JS por ahora)
+    res.render('ingresosResumen', { ingresos, rango });
+  } catch (err) {
+    console.error('❌ Error al mostrar resumen de ingresos:', err);
+    res.status(500).send('Error al cargar los ingresos');
+  }
+}
+
+
+module.exports = { 
+  mostrarFormulario, 
+  crearIngreso,
+  mostrarResumen 
+};

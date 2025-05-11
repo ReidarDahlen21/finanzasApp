@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { crearInstrumento, mostrarFormulario } = require('../controllers/instrumentosController');
-
+const instrumentosController = require('../controllers/instrumentosController');
 const modelo = require('../models/instrumentosModel');
 
 router.get('/autocomplete', async (req, res) => {
@@ -15,8 +14,8 @@ router.get('/autocomplete', async (req, res) => {
   }
 });
 
-
-router.get('/', mostrarFormulario);
-router.post('/', crearInstrumento);
+router.get('/', instrumentosController.mostrarFormulario);
+router.post('/', instrumentosController.crearInstrumento);
+router.post('/actualizar-campo', instrumentosController.actualizarCampo);
 
 module.exports = router;

@@ -1,0 +1,10 @@
+body {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+.navbar {
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+  margin-bottom: 1rem;
+}

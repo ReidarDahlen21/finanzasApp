@@ -25,11 +25,18 @@ async function buscarPorNombre(parcial) {
   return result.rows.map(row => row.nombre);
 }
 
+async function actualizarCampo(id, campo, valor) {
+  const query = `UPDATE instrumentos SET ${campo} = $1 WHERE id = $2`;
+  return pool.query(query, [valor, id]);
+}
+
+
 
 module.exports = {
   insertarInstrumento,
   obtenerTodos,
-  buscarPorNombre  
+  buscarPorNombre,
+  actualizarCampo
 };
 
 
