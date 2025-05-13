@@ -5,6 +5,7 @@ const operacionesRoutes = require('./routes/operacionesRoutes');
 const instrumentosRoutes = require('./routes/instrumentosRoutes');
 const ingresosRoutes = require('./routes/ingresosRoutes');
 const dolarMepRoutes = require('./routes/dolarMepRoutes');
+const carteraRoutes = require('./routes/carteraRoutes');
 
 const app = express();
 
@@ -43,5 +44,6 @@ app.use('/operaciones', operacionesRoutes);
 app.use('/instrumentos', instrumentosRoutes);
 app.use('/ingresos', ingresosRoutes);
 app.use('/dolar-mep', dolarMepRoutes);
+app.use('/cartera', carteraRoutes);
 
 module.exports = app;
