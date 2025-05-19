@@ -105,7 +105,7 @@
       data: {
         labels: labels,
         datasets: [{
-          label: 'Intereses Recibicos',
+          label: 'Intereses Recibidos',
           data: data,
           borderWidth: 2
         }]
@@ -132,25 +132,48 @@
           <td>${i.tipo_instrumento || '-'}</td>
           <td>${i.tipo_ingreso}</td>
           <td>${i.monto} ${i.moneda === 'ARS' ? '$' : 'u$d'}</td>
-          <td>${i.comision ? i.comision + ' $' : '-'}</td>
+          <td>${i.comision != null ? i.comision + ' $' : '-'}</td>
         `;
 
         tabla.appendChild(fila);
       });
     }
 
+    console.log("🧪 Datos filtrados:", filtrados);
+
     renderizarTabla(filtrados); // 👈 al final del script, después de cargar el gráfico
     
     function mostrarTotalIngresos(ingresos) {
-      const total = ingresos.reduce((sum, i) => sum + parseFloat(i.monto), 0);
-      const texto = total.toLocaleString('es-AR', {
-        style: 'currency',
-        currency: ingresos[0]?.moneda === 'USD' ? 'USD' : 'ARS',
-        minimumFractionDigits: 2
+      let totalUSD = 0;
+      let totalARS = 0;
+
+      ingresos.forEach(i => {
+        if (i.moneda === 'USD') {
+          totalUSD += parseFloat(i.monto);
+        } else if (i.moneda === 'ARS') {
+          totalARS += parseFloat(i.monto);
+        }
       });
 
-      document.getElementById('total-acumulado').textContent = texto;
+      const partes = [];
+      if (totalUSD > 0) {
+        partes.push(totalUSD.toLocaleString('es-AR', {
+          style: 'currency',
+          currency: 'USD',
+          minimumFractionDigits: 2
+        }));
+      }
+      if (totalARS > 0) {
+        partes.push(totalARS.toLocaleString('es-AR', {
+          style: 'currency',
+          currency: 'ARS',
+          minimumFractionDigits: 2
+        }));
+      }
+
+      document.getElementById('total-acumulado').textContent = partes.join(' + ');
     }
+
 
     mostrarTotalIngresos(filtrados);
 

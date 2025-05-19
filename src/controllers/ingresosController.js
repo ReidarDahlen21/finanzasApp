@@ -1,3 +1,5 @@
+console.log('📦 ingresosController cargado');
+
 const pool = require('../config/db');
 const modelo = require('../models/ingresosModel');
 

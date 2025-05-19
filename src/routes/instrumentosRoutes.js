@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const instrumentosController = require('../controllers/instrumentosController');
-const modelo = require('../models/instrumentosModel');
 
 router.get('/autocomplete', async (req, res) => {
   const query = req.query.q || '';

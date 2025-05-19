@@ -1,3 +1,5 @@
+//este archivo no debería utilizarse más ya que el chequeo de símbolos se agregó en uploadOperations.js
+
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');

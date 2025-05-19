@@ -42,22 +42,39 @@ function normalizarFecha(fechaStr) {
     if (row['Tipo'] !== 'Boleto') continue;
     const desc = row['Descripcion']?.toUpperCase() || '';
 
-    const tipo_operacion = desc.includes('COMPRA') ? 'compra' :
-                           desc.includes('VENTA') ? 'venta' : null;
+    const tipo_operacion =
+      desc.includes('COMPRA') || desc.includes('LICITACIÓN') ? 'compra' :
+      desc.includes('VENTA') ? 'venta' : null;
+
     if (!tipo_operacion) continue;
 
-    const instrumentoRes = await pool.query(
+    const fecha = normalizarFecha(row['﻿Concertacion'] || row['Concertacion']);
+    
+    if (row['Precio'] === '-1' || row['Precio'] === '-1,00') {
+      console.log(`⏩ Ignorado por ser línea de comisión: ${row['Ticker']} ${fecha}`);
+      continue;
+    }
+
+
+    let instrumentoRes = await pool.query(
       `SELECT id FROM instrumentos WHERE nombre = $1`,
       [row['Ticker']]
     );
 
     if (instrumentoRes.rows.length === 0) {
-      console.warn(`⚠️ Instrumento no encontrado: ${row['Ticker']}`);
-      continue;
+      console.log(`➕ Instrumento nuevo detectado: ${row['Ticker']}. Insertando...`);
+
+      const insertRes = await pool.query(
+        `INSERT INTO instrumentos (nombre, tipo, moneda_base) VALUES ($1, null, 'ARS') RETURNING id`,
+        [row['Ticker']]
+      );
+
+      instrumentoRes = { rows: [insertRes.rows[0]] }; // continuar como si lo hubiera encontrado
     }
 
+
     const instrumento_id = instrumentoRes.rows[0].id;
-    const fecha = normalizarFecha(row['﻿Concertacion'] || row['Concertacion']);
+    
     if (!fecha) {
       console.warn(`⚠️ Fecha inválida en línea: ${JSON.stringify(row)}`);
       continue;

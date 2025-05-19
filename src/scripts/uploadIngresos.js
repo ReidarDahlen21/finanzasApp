@@ -38,74 +38,106 @@ function normalizarFecha(fechaStr) {
       row[h] = cols[i]?.trim();
     });
 
-    const tipoRaw = row['Tipo'];
-    if (tipoRaw !== 'Cupón' && tipoRaw !== 'Dividendo') continue;
+    // 🧠 Lógica de ingresos extra
+    const tipo = row['Tipo']?.toLowerCase() || '';
 
-    const tipo = tipoRaw.toLowerCase(); // 'cupon' o 'dividendo'
-    const fecha = normalizarFecha(row['Concertacion']);
-    if (!fecha) continue;
+    // ⚠️ Cortamos si ya es cupón o dividendo (para evitar duplicados)
+    if (tipo === 'cupón' || tipo === 'dividendo') continue;
 
-    const instrumentoRes = await pool.query(
-      `SELECT id FROM instrumentos WHERE nombre = $1`,
-      [row['Ticker']]
+    const descripcion = row['Descripcion']?.toLowerCase() || '';
+    const importe = parseFloat(row['Importe']?.replace(',', '.'));
+
+
+    if (
+      tipo === 'tesorería' ||
+      descripcion.includes('conversión') ||
+      descripcion.includes('cv 7000 a') ||
+      descripcion.includes('cable a mep') ||
+      importe <= 0
+    ) {
+      continue;
+    }
+
+    const esIngresoValido = (
+      descripcion.includes('pago de premio') ||
+      descripcion.includes('devolución iva') ||
+      descripcion.includes('intereses devengados') ||
+      descripcion.includes('prima por rescate') ||
+      descripcion.includes('rescate') ||
+      descripcion.includes('intereses corridos')
     );
 
-    if (instrumentoRes.rows.length === 0) {
-      console.warn(`⚠️ Instrumento no encontrado: ${row['Ticker']}`);
-      continue;
-    }
+    if (!esIngresoValido) continue;
 
-    const instrumento_id = instrumentoRes.rows[0].id;
-
-    const monto = parseFloat(row['Importe']?.replace(',', '.'));
-    let moneda = row['Moneda']?.toUpperCase() || '';
-    if (moneda === 'PESOS') moneda = 'ARS';
-    if (moneda === 'DOLARES' || moneda === 'DÓLARES') moneda = 'USD';
-    if (moneda === 'DÓLARES C.V. 7000') moneda = 'USD'; // normalización básica
-
-    if (!['ARS', 'USD'].includes(moneda)) {
-      console.warn(`⚠️ Moneda no válida detectada: "${moneda}" en línea:`, row);
-      continue;
-    }
-
-
-
-    let equivalente_usd = null;
-
-    if (moneda === 'ARS') {
-      const mep = await pool.query(
-        `SELECT valor FROM dolar_mep WHERE fecha = $1`,
-        [fecha]
+    let instrumento_id = null;
+    if (row['Ticker']) {
+      const res = await pool.query(
+        'SELECT id FROM instrumentos WHERE nombre = $1',
+        [row['Ticker']]
       );
-      if (mep.rows.length > 0) {
-        equivalente_usd = monto / mep.rows[0].valor;
+      if (res.rows.length > 0) {
+        instrumento_id = res.rows[0].id;
       }
     }
 
+    const fecha = normalizarFecha(row['Concertacion']);
+    let moneda = row['Moneda']?.toUpperCase() || '';
+    if (moneda.includes('PESO')) moneda = 'ARS';
+    if (moneda.includes('DÓLAR') || moneda.includes('DOLLAR')) moneda = 'USD';
+
+    // 👇 Buscar posible comisión (línea siguiente)
+    let comision = null;
+    const next = rl.input.readLine?.(); // no funciona en readline, lo hacemos con índice abajo
+    // vamos a manejarlo de otra forma justo después
+
+    // Verificar si ya existe
     const existe = await pool.query(
-      `SELECT 1 FROM ingresos WHERE
-       instrumento_id = $1 AND fecha = $2 AND tipo = $3
-       AND monto = $4 AND moneda = $5`,
-      [instrumento_id, fecha, tipo, monto, moneda]
+      `SELECT 1 FROM ingresos
+       WHERE instrumento_id IS NOT DISTINCT FROM $1
+       AND fecha = $2 AND tipo = $3 AND monto = $4 AND moneda = $5`,
+      [instrumento_id, fecha, 'extra', importe, moneda]
     );
 
     if (existe.rows.length > 0) {
-      console.log(`⏩ Ya existe: ${row['Ticker']} ${fecha} ${tipo}`);
+      console.log(`⏩ Ya existe: ${fecha} | ${row['Descripcion']} | ${importe} ${moneda}`);
       continue;
     }
 
+    // Buscamos la posible línea de comisión: misma fecha, mismo ticker, monto negativo en ARS
+    const peekLine = rl._bufferedInput?.[0]; // "mirar" sin avanzar
+    if (peekLine) {
+      const nextCols = peekLine.split(';');
+      const nextRow = {};
+      headers.forEach((h, i) => {
+        nextRow[h] = nextCols[i]?.trim();
+      });
+
+      const nextFecha = normalizarFecha(nextRow['Concertacion']);
+      const nextImporte = parseFloat(nextRow['Importe']?.replace(',', '.'));
+      const nextMoneda = nextRow['Moneda']?.toUpperCase() || '';
+      const nextTicker = nextRow['Ticker'];
+
+      const mismaFecha = nextFecha === fecha;
+      const mismaMoneda = nextMoneda.includes('PESO');
+      const mismoTicker = (nextTicker === row['Ticker']);
+      const esNegativo = nextImporte < 0;
+
+      if (mismaFecha && mismaMoneda && esNegativo && mismoTicker) {
+        // ✅ Es comisión
+        comision = Math.abs(nextImporte);
+        rl._bufferedInput.shift(); // consumimos la línea manualmente
+      }
+    }
+
     await pool.query(
-      `INSERT INTO ingresos (
-        instrumento_id, fecha, tipo, monto, moneda, dolar_mep, equivalente_usd
-      ) VALUES (
-        $1, $2, $3, $4, $5,
-        (SELECT valor FROM dolar_mep WHERE fecha = $2), $6
-      )`,
-      [instrumento_id, fecha, tipo, monto, moneda, equivalente_usd]
+      `INSERT INTO ingresos (instrumento_id, fecha, tipo, monto, moneda, comision)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [instrumento_id, fecha, 'extra', importe, moneda, comision]
     );
 
-    console.log(`Insertando ingreso: ${row['Ticker']} | Fecha: ${fecha} | Tipo: ${tipo} | Moneda detectada: ${moneda}`);
     count++;
+    console.log(`✅ Ingreso registrado: ${fecha} | ${row['Descripcion']} | ${importe} ${moneda}` + (comision ? ` | Comisión: ${comision}` : ''));
+
   }
 
   console.log(`🏁 ${count} ingresos insertados.`);

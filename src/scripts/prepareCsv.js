@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
 
-const inputFilePath = path.join(__dirname, '../../Movimientos (19).csv');
+const inputFilePath = path.join(__dirname, '../../Movimientos (20).csv');
 const outputFilePath = path.join(__dirname, '../../Movimientos_limpio.csv');
 
 const columnasNumericas = ['Cantidad', 'Precio', 'Importe'];
